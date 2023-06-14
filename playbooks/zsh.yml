@@ -1,0 +1,36 @@
+- name: Install Zsh, Oh My Zsh, and zsh-autosuggestions
+  hosts: "*"
+  become: true
+  vars:
+    zsh_plugins:
+      - zsh-autosuggestions
+  tasks:
+    - name: Install Zsh
+      apt:
+        name: zsh
+        state: present
+
+    - name: Set Zsh as the default shell
+      command: chsh -s /usr/bin/zsh "{{ ansible_user }}"
+      args:
+        creates: /home/{{ ansible_user }}/.zshrc
+
+    - name: Install Oh My Zsh
+      become_user: "{{ ansible_user }}"
+      shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+    - name: Install zsh-autosuggestions plugin
+      ansible.builtin.git:
+        repo: 'https://github.com/zsh-users/zsh-autosuggestions.git'
+        dest: "{{ ansible_user_dir }}/.oh-my-zsh/plugins/zsh-autosuggestions"
+      tags: zsh_plugins
+
+    - name: Update Oh My Zsh plugins
+      lineinfile:
+        dest: "{{ ansible_user_dir }}/.zshrc"
+        regexp: '^plugins='
+        line: 'plugins=(zsh-autosuggestions)'
+        state: present
+        backup: yes
+      tags: zsh_plugins
+

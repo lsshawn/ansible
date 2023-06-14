@@ -1,0 +1,12 @@
+- hosts: "ubuntu"
+  become: yes
+  tags:
+    - install
+    - nextcloud
+    - pi
+  tasks:
+    - name: apt
+      apt:
+        update_cache: yes
+        upgrade: "yes"
+

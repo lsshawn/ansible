@@ -1,0 +1,35 @@
+- name: Install Nextcloud
+  hosts: "ubuntu"
+  become: true
+  tags:
+    - install
+    - nextcloud
+    - pi
+  tasks:
+    - name: Check if Docker is installed
+      command: docker info
+      register: docker_check
+      changed_when: false
+      failed_when: false
+
+    - name: Include docker.yml playbook if Docker is not installed
+      include_tasks: docker.yml
+      when: docker_check.rc != 0
+
+    - name: Download and run Nextcloud Docker container
+      command: docker run -d --name nextcloud -p 8080:80 nextcloud:latest
+      when: docker_check.rc == 0
+
+    - name: Wait for Nextcloud container to start
+      wait_for:
+        host: localhost
+        port: 8080
+        delay: 10
+        timeout: 300
+      when: docker_check.rc == 0
+
+    - name: Display Nextcloud setup instructions
+      debug:
+        msg: "Nextcloud is running at http://localhost:8080"
+      when: docker_check.rc == 0
+
