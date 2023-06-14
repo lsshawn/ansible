@@ -1,10 +1,15 @@
-- name: Install Nextcloud
-  hosts: "ubuntu"
+- name: Install Nextcloud with MySQL
+  hosts: ubuntu
   become: true
   tags:
     - install
     - nextcloud
     - pi
+  vars:
+    nextcloud_mysql_root_password: my_mysql_root_password
+    nextcloud_mysql_database: nextcloud
+    nextcloud_mysql_user: nextcloud
+    nextcloud_mysql_password: my_mysql_password
   tasks:
     - name: Check if Docker is installed
       command: docker info
@@ -16,8 +21,38 @@
       include_tasks: docker.yml
       when: docker_check.rc != 0
 
-    - name: Download and run Nextcloud Docker container
-      command: docker run -d --name nextcloud -p 8080:80 nextcloud:latest
+    - name: Create Nextcloud data directory
+      file:
+        path: /path/to/nextcloud/data
+        state: directory
+        owner: 33
+        group: 33
+
+    - name: Create Nextcloud database directory
+      file:
+        path: /path/to/nextcloud/db
+        state: directory
+        owner: 999
+        group: 999
+
+    - name: Stop existing Nextcloud container
+      command: docker stop nextcloud
+      ignore_errors: true
+      when: docker_check.rc == 0
+
+    - name: Remove existing Nextcloud container
+      command: docker rm nextcloud
+      ignore_errors: true
+      when: docker_check.rc == 0
+
+    - name: Start Nextcloud Docker container with MySQL
+      command: docker run -d --name nextcloud -p 8080:80 \
+               -e MYSQL_DATABASE={{ nextcloud_mysql_database }} \
+               -e MYSQL_USER={{ nextcloud_mysql_user }} \
+               -e MYSQL_PASSWORD={{ nextcloud_mysql_password }} \
+               -e MYSQL_ROOT_PASSWORD={{ nextcloud_mysql_root_password }} \
+               -v /path/to/nextcloud/data:/var/www/html \
+               nextcloud:latest
       when: docker_check.rc == 0
 
     - name: Wait for Nextcloud container to start

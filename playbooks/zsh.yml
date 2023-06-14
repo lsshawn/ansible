@@ -15,19 +15,39 @@
       args:
         creates: /home/{{ ansible_user }}/.zshrc
 
-    - name: Install Oh My Zsh
-      become_user: "{{ ansible_user }}"
-      shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    - name: Change current user shell
+      user:
+        name: "{{ ansible_ssh_user }}"
+        shell: /bin/zsh
+      become: yes
+
+    - name: Remove existing oh-my-zsh folder
+      file:
+        path: "/home/{{ ansible_user }}/.oh-my-zsh"
+        state: absent
+      become: true
+      
+
+    - name: Clone Oh My Zsh repository
+      ansible.builtin.git:
+        repo: 'https://github.com/ohmyzsh/ohmyzsh.git'
+        dest: /home/{{ ansible_user}}/.oh-my-zsh
+        depth: 1
+
+    - name: Copy the default Oh My Zsh configuration file
+      ansible.builtin.copy:
+        src: /home/{{ ansible_user}}/.oh-my-zsh/templates/zshrc.zsh-template
+        dest: /home/{{ ansible_user}}/.zshrc
 
     - name: Install zsh-autosuggestions plugin
       ansible.builtin.git:
         repo: 'https://github.com/zsh-users/zsh-autosuggestions.git'
-        dest: "{{ ansible_user_dir }}/.oh-my-zsh/plugins/zsh-autosuggestions"
+        dest: "/home/{{ ansible_user }}/.oh-my-zsh/plugins/zsh-autosuggestions"
       tags: zsh_plugins
 
     - name: Update Oh My Zsh plugins
       lineinfile:
-        dest: "{{ ansible_user_dir }}/.zshrc"
+        dest: "/home/{{ ansible_user }}/.zshrc"
         regexp: '^plugins='
         line: 'plugins=(zsh-autosuggestions)'
         state: present
