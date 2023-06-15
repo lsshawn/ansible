@@ -5,6 +5,7 @@
     - install
     - nextcloud
     - pi
+  vars_files:
   vars:
     nextcloud_mysql_root_password: my_mysql_root_password
     nextcloud_mysql_database: nextcloud
