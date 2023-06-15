@@ -19,6 +19,14 @@ To run:
 
 ```bash
 ansible-playbook ./playbooks/apt.yml --user ss --private-key ~/.ssh/id_rsa -i ./inventory/hosts
-
 ```
 
+If the playbook uses secret, append `--ask-vault-pass`.
+
+## Secrets
+
+```
+ansible-vault create secret.yml
+
+ansible-vault decrypt secret.yml
+```

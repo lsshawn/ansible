@@ -1,3 +1,38 @@
+- name: Uninstall Nextcloud
+  hosts: ubuntu
+  become: true
+  tags:
+    - uninstall
+    - nextcloud
+    - pi
+  vars:
+    nextcloud_data_dir: "/mnt/external1/nextcloud/data"
+    nextcloud_db_dir: "/mnt/external1/nextcloud/db"
+  tasks:
+    - name: Stop Nextcloud container
+      command: docker stop nextcloud
+      ignore_errors: true
+
+    - name: Remove Nextcloud container
+      command: docker rm nextcloud
+      ignore_errors: true
+
+    - name: Remove Nextcloud data directory
+      file:
+        path: "{{ nextcloud_data_dir }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Remove Nextcloud database directory
+      file:
+        path: "{{ nextcloud_db_dir }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Remove Nextcloud image
+      command: docker rmi nextcloud:latest
+      ignore_errors: true
+
 - name: Install Nextcloud with MySQL
   hosts: ubuntu
   become: true
@@ -5,13 +40,19 @@
     - install
     - nextcloud
     - pi
-  vars_files:
   vars:
-    nextcloud_mysql_root_password: my_mysql_root_password
-    nextcloud_mysql_database: nextcloud
-    nextcloud_mysql_user: nextcloud
-    nextcloud_mysql_password: my_mysql_password
+    nextcloud_data_dir: "/mnt/external1/nextcloud/data"
+    nextcloud_db_dir: "/mnt/external1/nextcloud/db"
+  vars_files:
+    - ../secret.yml
   tasks:
+    - name: Check if nextcloud_mysql_database is defined
+      assert:
+        that:
+          - nextcloud_mysql_database is defined
+      failed_when: false
+      changed_when: false
+
     - name: Check if Docker is installed
       command: docker info
       register: docker_check
@@ -24,48 +65,51 @@
 
     - name: Create Nextcloud data directory
       file:
-        path: /path/to/nextcloud/data
+        path: "{{ nextcloud_data_dir }}"
         state: directory
-        owner: 33
-        group: 33
+        mode: '0770'
+        owner: www-data
+        group: www-data
+      when: docker_check.rc == 0
 
     - name: Create Nextcloud database directory
       file:
-        path: /path/to/nextcloud/db
+        path: "{{ nextcloud_db_dir }}"
         state: directory
         owner: 999
         group: 999
+      when: docker_check.rc == 0
 
     - name: Stop existing Nextcloud container
       command: docker stop nextcloud
       ignore_errors: true
-      when: docker_check.rc == 0
+      when: docker_check.rc == 0 and nextcloud_mysql_database is defined
 
     - name: Remove existing Nextcloud container
       command: docker rm nextcloud
       ignore_errors: true
-      when: docker_check.rc == 0
+      when: docker_check.rc == 0 and nextcloud_mysql_database is defined
 
     - name: Start Nextcloud Docker container with MySQL
       command: docker run -d --name nextcloud -p 8080:80 \
+               {% if nextcloud_mysql_database is defined %}
                -e MYSQL_DATABASE={{ nextcloud_mysql_database }} \
+               {% endif %}
+               {% if nextcloud_mysql_user is defined %}
                -e MYSQL_USER={{ nextcloud_mysql_user }} \
+               {% endif %}
+               {% if nextcloud_mysql_password is defined %}
                -e MYSQL_PASSWORD={{ nextcloud_mysql_password }} \
+               {% endif %}
+               {% if nextcloud_mysql_root_password is defined %}
                -e MYSQL_ROOT_PASSWORD={{ nextcloud_mysql_root_password }} \
-               -v /path/to/nextcloud/data:/var/www/html \
+               {% endif %}
+               -v {{ nextcloud_data_dir }}:/var/www/html \
                nextcloud:latest
-      when: docker_check.rc == 0
-
-    - name: Wait for Nextcloud container to start
-      wait_for:
-        host: localhost
-        port: 8080
-        delay: 10
-        timeout: 300
-      when: docker_check.rc == 0
+      when: docker_check.rc == 0 and nextcloud_mysql_database is defined
 
     - name: Display Nextcloud setup instructions
       debug:
         msg: "Nextcloud is running at http://localhost:8080"
-      when: docker_check.rc == 0
+      when: docker_check.rc == 0 and (nextcloud_mysql_database is defined or nextcloud_mysql_user is defined or nextcloud_mysql_password is defined or nextcloud_mysql_root_password is defined)
 
