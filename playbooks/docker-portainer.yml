@@ -1,0 +1,56 @@
+- name: Install Docker Portainer
+  hosts: "ubuntu"
+  become: true
+  tags:
+    - install
+    - docker
+  tasks:
+  - name: Set Ubuntu release codename
+    set_fact:
+      ubuntu_release_codename: "{{ ansible_distribution_release }}"
+
+  - name: Install required packages
+    apt:
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+      state: present
+
+  - name: Add Docker GPG key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+  - name: Add Docker APT repository
+    apt_repository:
+      repo: deb https://download.docker.com/linux/ubuntu {{ ubuntu_release_codename }} stable
+      state: present
+
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+
+  - name: Install Docker engine
+    apt:
+      name: docker-ce
+      state: present
+
+  - name: Start and enable Docker service
+    service:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: Install Docker Portainer
+    docker_container:
+      name: portainer
+      image: portainer/portainer-ce
+      state: started
+      restart_policy: unless-stopped
+      published_ports: "9000:9000"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+

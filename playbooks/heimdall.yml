@@ -1,0 +1,31 @@
+- name: Install Heimdall Docker container
+  hosts: "ubuntu"
+  become: true
+  tags:
+    - install
+    - pi
+  vars:
+    heimdall_volume_name: heimdall
+    heimdall_tz: Asia/Kuala_Lumpur
+
+  tasks:
+    - name: Create Heimdall Docker volume
+      docker_volume:
+        name: "{{ heimdall_volume_name }}"
+        state: present
+
+    - name: Start Heimdall Docker container
+      docker_container:
+        name: heimdall
+        image: linuxserver/heimdall
+        restart_policy: unless-stopped
+        env:
+          PUID: "1000"
+          PGID: "1000"
+          TZ: "{{ heimdall_tz }}"
+        ports:
+          - "8006:80"
+          - "406:443"
+        volumes:
+          - "{{ heimdall_volume_name }}:/config"
+

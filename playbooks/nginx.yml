@@ -1,0 +1,23 @@
+- name: Install Nginx
+  hosts: "ubuntu"
+  tags:
+    - pi
+  become: true
+  tasks:
+    - name: Install Nginx package
+      apt:
+        name: nginx
+        state: present
+
+    - name: Copy Nginx configuration file
+      template:
+        src: nginx.conf
+        dest: /etc/nginx/nginx.conf
+      notify: Restart Nginx
+
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+

@@ -1,0 +1,36 @@
+- name: Install Full Text RSS and FreshRSS
+  hosts: "ubuntu"
+  become: true
+  vars:
+    full_text_rss_port: 50000
+    freshrss_port: 49999
+    freshrss_data_path: "/mnt/external1/freshrss"
+    freshrss_puid: "1000"
+    freshrss_pgid: "1000"
+    freshrss_tz: "Asia/Singapore"
+
+  tasks:
+    - name: Start Full Text RSS container
+      docker_container:
+        name: full-text-rss
+        image: heussd/fivefilters-full-text-rss:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ full_text_rss_port }}:80"
+
+    - name: Start FreshRSS container
+      docker_container:
+        name: freshrss
+        image: lscr.io/linuxserver/freshrss:latest
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ freshrss_port }}:80"
+        env:
+          PUID: "{{ freshrss_puid }}"
+          PGID: "{{ freshrss_pgid }}"
+          TZ: "{{ freshrss_tz }}"
+        volumes:
+          - "{{ freshrss_data_path }}:/config"
+

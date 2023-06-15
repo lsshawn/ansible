@@ -1,0 +1,35 @@
+---
+- name: Install Homer
+  hosts: "ubuntu"
+  become: true
+  tags:
+    - install
+    - pi
+  tasks:
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        update_cache: yes
+        state: present
+
+    - name: Clone Homer repository
+      git:
+        repo: https://github.com/bastienwirtz/homer.git
+        dest: /opt/homer
+
+    - name: Copy .env file
+      template:
+        src: ../homer.env
+        dest: /opt/homer/.env
+
+    - name: Update docker-compose.yml with new port
+      replace:
+        path: /opt/homer/docker-compose.yml
+        regexp: '^(.*)8080(:.*)$'
+        replace: '\18081\2'
+
+    - name: Build and start Homer Docker containers
+      command: docker-compose up -d
+      args:
+        chdir: /opt/homer
+
